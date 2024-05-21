@@ -30,7 +30,8 @@ else
     # Pick the first file with the specified extension
     FIRST_FILE="${FILE_LIST[0]}"
 
-    # Registration from native to MNI space
+    # Registration from native to MNI space 
+    # Use antsRegistrationSyN.sh for improved registration
     antsRegistrationSyNQuick.sh -d 3 -m ${FIRST_FILE} -f ${SCRIPT_DIR}/mni_masked.nii.gz -t s -o ${TMP_DIR}/to_mni -n 1
 
     # Apply to every bundle
