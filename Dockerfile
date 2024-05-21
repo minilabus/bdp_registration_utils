@@ -5,7 +5,8 @@ RUN apt-get -y install wget unzip git
 
 WORKDIR /
 RUN wget -O bdp_registration_utils.zip "https://www.dropbox.com/s/ccsvtjijdicn1qv/bdp_registration_utils.zip?dl=0d?download=1"
-RUN unzip bdp_registration_utils.zip
+RUN mkdir bdp_registration_utils/
+RUN unzip bdp_registration_utils.zip -d bdp_registration_utils/
 RUN rm bdp_registration_utils.zip
 
 RUN git clone https://github.com/minilabus/bradiphopy.git
