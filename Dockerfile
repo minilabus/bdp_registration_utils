@@ -1,4 +1,4 @@
-FROM scilus/scilus:2.0.2 as bradipho
+FROM scilus/scilus:2.0.2 AS bradipho
 
 RUN apt-get update
 RUN apt-get -y install wget unzip git rsync

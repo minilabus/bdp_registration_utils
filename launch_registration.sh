@@ -121,4 +121,4 @@ for MESH in ${OUT_DIR}/native/meshes/*
     do bdp_scale_surface_file.py ${MESH} ${OUT_DIR}/cloud_compare/meshes/$(basename ${MESH}) --to_lps
 done
 
-# rm ${TMP_DIR} -r
+rm ${TMP_DIR} -r
