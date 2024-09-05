@@ -43,7 +43,7 @@ REFERENCE=${TMP_DIR}/reorganized/reference.nii.gz
 if [ -f ${REFERENCE} ]; then
     # Registration from native to MNI space 
     # Use antsRegistrationSyN.sh for improved registration
-    antsRegistrationSyN.sh -d 3 -m ${REFERENCE} \
+    antsRegistrationSyNQuick.sh -d 3 -m ${REFERENCE} \
         -f ${SCRIPT_DIR}/mni_masked.nii.gz -t s -o ${TMP_DIR}/to_mni -n 1
 
     # Apply to every bundle (after validation of header, the files are not in
