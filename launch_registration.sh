@@ -14,7 +14,7 @@ mkdir -p ${OUT_DIR}/native/images ${OUT_DIR}/native/labels_masks \
 mkdir -p ${OUT_DIR}/cloud_compare/tubes ${OUT_DIR}/cloud_compare/polylines \
     ${OUT_DIR}/cloud_compare/meshes
 
-python reorganize_files.py ${TARGET_DIR} ${TMP_DIR}/reorganized/ -f
+python ${SCRIPT_DIR}/reorganize_files.py ${TARGET_DIR} ${TMP_DIR}/reorganized/ -f
 REFERENCE=${TMP_DIR}/reorganized/reference.nii.gz
 shopt -s nullglob
 # Check if there are any files with the  specified extension
