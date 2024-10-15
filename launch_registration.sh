@@ -6,14 +6,26 @@ OUT_DIR="output/"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 SUBJ=${2}
 
+# Check if the target directory exists
+if [ ! -d ${TARGET_DIR} ]; then
+    echo "The target directory does not exist."
+    exit 1
+fi
+
+# Check if the subject directory exists
+if [ ! -d ${SCRIPT_DIR}/${SUBJ} ]; then
+    echo "The subject directory does not exist."
+    exit 1
+fi
+
 echo "Prepare input data and organize by file format..."
 rm -rf ${OUT_DIR}/ ${TMP_DIR}/
 mkdir -p ${TMP_DIR}/images ${TMP_DIR}/labels_masks ${TMP_DIR}/streamlines \
-    ${TMP_DIR}/meshes_points_clouds
+    ${TMP_DIR}/meshes_point_clouds
 mkdir -p ${OUT_DIR}/native/images ${OUT_DIR}/native/labels_masks \
-    ${OUT_DIR}/native/streamlines ${OUT_DIR}/native/meshes_points_clouds
+    ${OUT_DIR}/native/streamlines ${OUT_DIR}/native/meshes_point_clouds
 mkdir -p ${OUT_DIR}/cloud_compare/tubes ${OUT_DIR}/cloud_compare/polylines \
-    ${OUT_DIR}/cloud_compare/meshes_points_clouds
+    ${OUT_DIR}/cloud_compare/meshes_point_clouds
 
 python ${SCRIPT_DIR}/reorganize_files.py ${TARGET_DIR} ${TMP_DIR}/reorganized/ -f
 REFERENCE=${TMP_DIR}/reorganized/reference.nii.gz
@@ -39,14 +51,17 @@ for BUNDLE in ${TMP_DIR}/reorganized/streamlines/*.trk;
 done
 rm ${TMP_DIR}/tmp.tck -rf
 
-scil_header_validate_compatibility.py ${SCRIPT_DIR}/mni_masked.nii.gz ${REFERENCE} ${TMP_DIR}/streamlines/* \
-    ${TMP_DIR}/reorganized/labels_masks/* ${TMP_DIR}/reorganized/images/* > ${TMP_DIR}/log.txt 2>&1
+scil_header_validate_compatibility.py ${SCRIPT_DIR}/mni_masked.nii.gz ${REFERENCE} \
+    ${TMP_DIR}/streamlines/* ${TMP_DIR}/reorganized/labels_masks/* \
+    ${TMP_DIR}/reorganized/images/* > ${TMP_DIR}/log.txt 2>&1
 
 # Sneak in nifti as surfaces (useful only for actual binary data)
 for NIFTI in ${TMP_DIR}/reorganized/images/* ${TMP_DIR}/reorganized/labels_masks/*;
     do FILENAME="${NIFTI%%.*}"
-    scil_volume_math.py lower_threshold ${NIFTI} 0.001 ${TMP_DIR}/tmp.nii.gz --data_type uint8 -f;
-    bdp_convert_nifti_to_surface.py ${TMP_DIR}/tmp.nii.gz ${TMP_DIR}/reorganized/meshes_points_clouds/$(basename ${FILENAME}).ply
+    scil_volume_math.py lower_threshold ${NIFTI} 0.001 ${TMP_DIR}/tmp.nii.gz \
+        --data_type uint8 -f;
+    bdp_convert_nifti_to_surface.py ${TMP_DIR}/tmp.nii.gz \
+        ${TMP_DIR}/reorganized/meshes_point_clouds/$(basename ${FILENAME}).ply
 done
 rm ${TMP_DIR}/tmp.nii.gz -rf
 
@@ -55,11 +70,12 @@ if ! grep -q "All input files have compatible headers" ${TMP_DIR}/log.txt; then
     # Registration from native to MNI space 
     # Use antsRegistrationSyN.sh for improved registration
     antsRegistrationSyNQuick.sh -d 3 -m ${REFERENCE} \
-        -f ${SCRIPT_DIR}/mni_masked.nii.gz -t s -o ${TMP_DIR}/to_mni -n 1 > log.txt
+        -f ${SCRIPT_DIR}/mni_masked.nii.gz -t s -o ${TMP_DIR}/to_mni -n 1 > ${TMP_DIR}/log.txt
 
     # Apply to every bundle (after validation of header, the files are not in
     # the reorganized folder anymore). That's why we use -f, to overwrite files
     echo "Apply transform to our MNI template..."
+    echo " - To streamlines"
     for BUNDLE in ${TMP_DIR}/reorganized/streamlines/*;
         do scil_tractogram_apply_transform.py ${BUNDLE} ${SCRIPT_DIR}/mni_masked.nii.gz \
             ${TMP_DIR}/to_mni0GenericAffine.mat ${TMP_DIR}/streamlines/$(basename ${BUNDLE}) \
@@ -67,22 +83,28 @@ if ! grep -q "All input files have compatible headers" ${TMP_DIR}/log.txt; then
             --cut_invalid -f;
     done
 
-    for MESH in ${TMP_DIR}/reorganized/meshes_points_clouds/*;
+    echo " - To meshes and points clouds"
+    for MESH in ${TMP_DIR}/reorganized/meshes_point_clouds/*;
         do scil_surface_apply_transform.py ${MESH} \
-            ${TMP_DIR}/to_mni0GenericAffine.mat ${TMP_DIR}/meshes_points_clouds/$(basename ${MESH}) \
+            ${TMP_DIR}/to_mni0GenericAffine.mat ${TMP_DIR}/meshes_point_clouds/$(basename ${MESH}) \
             --inverse --in_deformation ${TMP_DIR}/to_mni1InverseWarp.nii.gz;
     done
 
+    echo " - To images"
     for IMAGE in ${TMP_DIR}/reorganized/images/*;
         do antsApplyTransforms -d 3 -i ${IMAGE} -r ${SCRIPT_DIR}/mni_masked.nii.gz \
-            -o ${TMP_DIR}/images/$(basename ${IMAGE}) -t ${TMP_DIR}/to_mni0GenericAffine.mat \
-            -t ${TMP_DIR}/to_mni1InverseWarp.nii.gz --interpolation Linear;
+            -o ${TMP_DIR}/images/$(basename ${IMAGE}) \
+            -t ${TMP_DIR}/to_mni1Warp.nii.gz \
+            -t ${TMP_DIR}/to_mni0GenericAffine.mat --interpolation Linear;
     done
 
+    echo " - To labels and masks"
     for LABEL in ${TMP_DIR}/reorganized/labels_masks/*;
         do antsApplyTransforms -d 3 -i ${LABEL} -r ${SCRIPT_DIR}/mni_masked.nii.gz \
-            -o ${TMP_DIR}/labels_masks/$(basename ${LABEL}) -t ${TMP_DIR}/to_mni0GenericAffine.mat \
-            -t ${TMP_DIR}/to_mni1InverseWarp.nii.gz --interpolation NearestNeighbor -u short;
+            -o ${TMP_DIR}/labels_masks/$(basename ${LABEL}) \
+            -t ${TMP_DIR}/to_mni1Warp.nii.gz \
+            -t ${TMP_DIR}/to_mni0GenericAffine.mat \
+            --interpolation NearestNeighbor -u short;
     done
 else
     cp ${TMP_DIR}/reorganized/* ${TMP_DIR}/ -r
@@ -91,6 +113,7 @@ rm ${TMP_DIR}/reorganized/ -rf
 
 echo "Apply transform from our MNI template to the desired specimen..."
 # Using a known transform (MNI->specimen) move all bundles to specimen space (.trk)
+echo " - To streamlines"
 for BUNDLE in ${TMP_DIR}/streamlines/*;
     do scil_tractogram_apply_transform.py ${BUNDLE} \
         ${SCRIPT_DIR}/${SUBJ}/to_specimenWarped.nii.gz \
@@ -100,28 +123,34 @@ for BUNDLE in ${TMP_DIR}/streamlines/*;
         --cut_invalid --reference ${SCRIPT_DIR}/mni_masked.nii.gz &> ${TMP_DIR}/log.txt;
 done
 
-for MESH in ${TMP_DIR}/meshes_points_clouds/*;
+echo " - To meshes and points clouds"
+for MESH in ${TMP_DIR}/meshes_point_clouds/*;
     do scil_surface_apply_transform.py ${MESH} \
         ${SCRIPT_DIR}/${SUBJ}/to_specimen0GenericAffine.mat \
-        ${OUT_DIR}/native/meshes_points_clouds/$(basename ${MESH}) --inverse \
+        ${OUT_DIR}/native/meshes_point_clouds/$(basename ${MESH}) --inverse \
         --in_deformation ${SCRIPT_DIR}/${SUBJ}/to_specimen1InverseWarp.nii.gz;
 done
 
+echo " - To images"
 for IMAGE in ${TMP_DIR}/images/*;
     do antsApplyTransforms -d 3 -i ${IMAGE} -r ${SCRIPT_DIR}/${SUBJ}/to_specimenWarped.nii.gz \
         -o ${OUT_DIR}/native/images/$(basename ${IMAGE}) \
+        -t ${SCRIPT_DIR}/${SUBJ}/to_specimen1Warp.nii.gz \
         -t ${SCRIPT_DIR}/${SUBJ}/to_specimen0GenericAffine.mat \
-        -t ${SCRIPT_DIR}/${SUBJ}/to_specimen1InverseWarp.nii.gz --interpolation Linear;
+        --interpolation Linear;
 done
 
+echo " - To labels and masks"
 for LABEL in ${TMP_DIR}/labels_masks/*;
     do antsApplyTransforms -d 3 -i ${LABEL} -r ${SCRIPT_DIR}/${SUBJ}/to_specimenWarped.nii.gz \
         -o ${OUT_DIR}/native/labels_masks/$(basename ${LABEL}) \
+        -t ${SCRIPT_DIR}/${SUBJ}/to_specimen1Warp.nii.gz \
         -t ${SCRIPT_DIR}/${SUBJ}/to_specimen0GenericAffine.mat \
-        -t ${SCRIPT_DIR}/${SUBJ}/to_specimen1InverseWarp.nii.gz --interpolation NearestNeighbor;
+        --interpolation NearestNeighbor;
 done
 
 # Generate meshes, polylines (.vtk), tubes (.ply) in photogrammetry space
+echo "Generate meshes, polylines and tubes in photogrammetry space..."
 for BUNDLE in ${OUT_DIR}/native/streamlines/*
     do EXT=$(basename "${BUNDLE}" | awk -F . '{print $NF}')
     bdp_scale_tractography_file.py ${BUNDLE} \
@@ -134,8 +163,9 @@ for BUNDLE in ${OUT_DIR}/native/streamlines/*
 done
 
 echo "Scale for CloudCompare..."
-for MESH in ${OUT_DIR}/native/meshes_points_clouds/*
-    do bdp_scale_surface_file.py ${MESH} ${OUT_DIR}/cloud_compare/meshes_points_clouds/$(basename ${MESH}) --to_lps
+for MESH in ${OUT_DIR}/native/meshes_point_clouds/*
+    do bdp_scale_surface_file.py ${MESH} \
+        ${OUT_DIR}/cloud_compare/meshes_point_clouds/$(basename ${MESH}) --to_lps
 done
 
 rm ${TMP_DIR} -rf

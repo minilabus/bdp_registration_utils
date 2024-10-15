@@ -5,7 +5,7 @@
 Scripts to reorganize a folder full of various file format into 4 folders:
   - images/
   - labels_masks/
-  - meshes_points_clouds/
+  - meshes_point_clouds/
   - streamlines/
 """
 
@@ -47,7 +47,7 @@ def main():
     os.mkdir(os.path.join(args.out_folder, "images"))
     os.mkdir(os.path.join(args.out_folder, "labels_masks"))
     os.mkdir(os.path.join(args.out_folder, "streamlines"))
-    os.mkdir(os.path.join(args.out_folder, "meshes_points_clouds"))
+    os.mkdir(os.path.join(args.out_folder, "meshes_point_clouds"))
 
     ref = None
     for root, dirs, files in os.walk(args.in_folder):
@@ -55,7 +55,7 @@ def main():
             _, ext = split_name_with_nii(file)
             if ext in ['.vtk', '.vtp', '.fib', '.ply', '.stl', '.xml', '.obj']:
                 shutil.copy(os.path.join(root, file),
-                            os.path.join(args.out_folder, "meshes_points_clouds",
+                            os.path.join(args.out_folder, "meshes_point_clouds",
                                          file))
             elif ext in ['.nii', '.nii.gz']:
                 path = os.path.join(root, file)
