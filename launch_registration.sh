@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 TARGET_DIR=${1}
-TMP_DIR="tmp/"
+TMP_DIR="tmp_$((1 + $RANDOM % 100))/"
 OUT_DIR="output/"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 SUBJ=${2}
@@ -29,30 +29,38 @@ fi
 echo "Harmonize headers to all match a reference image..."
 for BUNDLE in ${TMP_DIR}/reorganized/streamlines/*.trk;
     do EXT=$(basename "${BUNDLE}" | awk -F . '{print $NF}')
-    scil_header_validate_compatibility.py ${BUNDLE} ${REFERENCE} > ${TMP_DIR}/log.txt
+    scil_header_validate_compatibility.py ${BUNDLE} ${REFERENCE} > ${TMP_DIR}/log.txt 2>&1
     if grep -q "All input files have compatible headers" ${TMP_DIR}/log.txt; then
-        cp ${BUNDLE} ${TMP_DIR}/streamlines/$(basename ${BUNDLE})
         continue
     fi
     echo "Fixing header for ${BUNDLE}"
-    scil_tractogram_convert.py ${BUNDLE} tmp.tck
-    scil_tractogram_convert.py tmp.tck ${TMP_DIR}/streamlines/$(basename ${BUNDLE}) \
-        --reference ${REFERENCE} -f
-    rm tmp.tck
+    scil_tractogram_convert.py ${BUNDLE} ${TMP_DIR}/tmp.tck -f
+    scil_tractogram_convert.py ${TMP_DIR}/tmp.tck ${BUNDLE} --reference ${REFERENCE} -f
 done
+rm ${TMP_DIR}/tmp.tck -rf
 
 scil_header_validate_compatibility.py ${SCRIPT_DIR}/mni_masked.nii.gz ${REFERENCE} ${TMP_DIR}/streamlines/* \
-    ${TMP_DIR}/reorganized/labels_masks/* ${TMP_DIR}/reorganized/images/* > ${TMP_DIR}/log.txt
+    ${TMP_DIR}/reorganized/labels_masks/* ${TMP_DIR}/reorganized/images/* > ${TMP_DIR}/log.txt 2>&1
+
+# Sneak in nifti as surfaces (useful only for actual binary data)
+for NIFTI in ${TMP_DIR}/reorganized/images/* ${TMP_DIR}/reorganized/labels_masks/*;
+    do FILENAME="${NIFTI%%.*}"
+    scil_volume_math.py lower_threshold ${NIFTI} 0.001 ${TMP_DIR}/tmp.nii.gz --data_type uint8 -f;
+    bdp_convert_nifti_to_surface.py ${TMP_DIR}/tmp.nii.gz ${TMP_DIR}/reorganized/meshes_points_clouds/$(basename ${FILENAME}).ply
+done
+rm ${TMP_DIR}/tmp.nii.gz -rf
+
 if ! grep -q "All input files have compatible headers" ${TMP_DIR}/log.txt; then
-    echo "Registration to MNI in case the provided data does not match our MNI template"
+    echo "Registration to MNI in case the provided data does not match our MNI template..."
     # Registration from native to MNI space 
     # Use antsRegistrationSyN.sh for improved registration
     antsRegistrationSyNQuick.sh -d 3 -m ${REFERENCE} \
-        -f ${SCRIPT_DIR}/mni_masked.nii.gz -t s -o ${TMP_DIR}/to_mni -n 1
+        -f ${SCRIPT_DIR}/mni_masked.nii.gz -t s -o ${TMP_DIR}/to_mni -n 1 > log.txt
 
     # Apply to every bundle (after validation of header, the files are not in
     # the reorganized folder anymore). That's why we use -f, to overwrite files
-    for BUNDLE in ${TMP_DIR}/streamlines/*;
+    echo "Apply transform to our MNI template..."
+    for BUNDLE in ${TMP_DIR}/reorganized/streamlines/*;
         do scil_tractogram_apply_transform.py ${BUNDLE} ${SCRIPT_DIR}/mni_masked.nii.gz \
             ${TMP_DIR}/to_mni0GenericAffine.mat ${TMP_DIR}/streamlines/$(basename ${BUNDLE}) \
             --inverse --in_deformation ${TMP_DIR}/to_mni1InverseWarp.nii.gz \
@@ -62,7 +70,7 @@ if ! grep -q "All input files have compatible headers" ${TMP_DIR}/log.txt; then
     for MESH in ${TMP_DIR}/reorganized/meshes_points_clouds/*;
         do scil_surface_apply_transform.py ${MESH} \
             ${TMP_DIR}/to_mni0GenericAffine.mat ${TMP_DIR}/meshes_points_clouds/$(basename ${MESH}) \
-            --in_deformation ${TMP_DIR}/to_mni1InverseWarp.nii.gz;
+            --inverse --in_deformation ${TMP_DIR}/to_mni1InverseWarp.nii.gz;
     done
 
     for IMAGE in ${TMP_DIR}/reorganized/images/*;
@@ -89,7 +97,7 @@ for BUNDLE in ${TMP_DIR}/streamlines/*;
         ${SCRIPT_DIR}/${SUBJ}/to_specimen0GenericAffine.mat \
         ${OUT_DIR}/native/streamlines/$(basename ${BUNDLE}) --inverse \
         --in_deformation ${SCRIPT_DIR}/${SUBJ}/to_specimen1InverseWarp.nii.gz \
-        --cut_invalid --reference ${SCRIPT_DIR}/mni_masked.nii.gz &> ${TMP_DIR}/log.txt ;
+        --cut_invalid --reference ${SCRIPT_DIR}/mni_masked.nii.gz &> ${TMP_DIR}/log.txt;
 done
 
 for MESH in ${TMP_DIR}/meshes_points_clouds/*;
