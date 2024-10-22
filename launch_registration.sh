@@ -3,7 +3,7 @@
 TARGET_DIR=${1}
 TMP_DIR="tmp_$((1 + $RANDOM % 100))/"
 OUT_DIR="output/"
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SCRIPT_DIR="/bdp_registration_utils/"
 SUBJ=${2}
 
 # Check if the target directory exists

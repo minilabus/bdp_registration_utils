@@ -1,1 +1,11 @@
 sub-*/
+*.vtk
+*.ply
+*.stl
+*.vtp
+*.obj
+*.trk
+*.tck
+*.nii
+*.nii.gz
+*.sif
