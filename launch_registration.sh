@@ -3,7 +3,7 @@
 TARGET_DIR=${1}
 TMP_DIR="tmp_$((1 + $RANDOM % 100))/"
 OUT_DIR="output/"
-SCRIPT_DIR=/bdp_registration_utils/ # To be replaced by the actual path
+SCRIPT_DIR="/bdp_registration_utils/"
 SUBJ=${2}
 IS_ONLINE=true
 
