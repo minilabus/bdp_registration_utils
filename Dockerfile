@@ -19,6 +19,7 @@ RUN pip3 install setuptools==65.*
 RUN pip3 install -e .
 
 WORKDIR /scilpy
+RUN pip install -r requirements.txt
 RUN pip3 install -e .
 
 WORKDIR /
