@@ -176,7 +176,7 @@ echo "Generate meshes, polylines and tubes in photogrammetry space..."
 for BUNDLE in ${OUT_DIR}/native/streamlines/*
     do EXT=$(basename "${BUNDLE}" | awk -F . '{print $NF}')
 
-    if [ ${IS_ONLINE} = true ];
+    if [ ${IS_ONLINE} = false ];
         then bdp_scale_tractography_file.py ${BUNDLE} \
         ${OUT_DIR}/cloud_compare/polylines/$(basename ${BUNDLE} .${EXT}).vtk
     fi
