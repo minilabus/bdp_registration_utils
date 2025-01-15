@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
+# Bash script to run the registration procedure
+
 TARGET_DIR=${1}
 TMP_DIR="tmp_$((1 + $RANDOM % 100))/"
-OUT_DIR="output/"
+OUT_DIR=${3}
 SCRIPT_DIR="/bdp_registration_utils/"
 SUBJ=${2}
 IS_ONLINE=true

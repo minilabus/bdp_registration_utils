@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# Internal use only
+
+
 """
 Scripts to reorganize a folder full of various file format into 4 folders:
   - images/
