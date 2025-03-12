@@ -70,8 +70,7 @@ def main():
                 img = nib.load(os.path.join(root, file))
                 data = img.get_fdata()
                 values = np.unique(data)
-
-                if np.allclose(np.mod(values, 1), 0, atol=1e-6):
+                if np.sum(np.mod(values, 1)) < 1e-3:
                     if len(values) < MAX_NUM_LABELS:
                         shutil.copy(os.path.join(root, file),
                                     os.path.join(args.out_folder, "labels_masks",
@@ -80,6 +79,8 @@ def main():
                         print(f"Skipping {file} because it has more than "
                               f"{MAX_NUM_LABELS} labels. Uncertain "
                               "classification.")
+                        shutil.copy(os.path.join(root, file),
+                                    os.path.join(args.out_folder, "images", file))
                 else:
                     ref = path
                     os.remove(os.path.join(args.out_folder, 'reference'+ext))

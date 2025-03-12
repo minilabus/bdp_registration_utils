@@ -6,8 +6,9 @@ TARGET_DIR=${1}
 TMP_DIR="tmp_$((1 + $RANDOM % 100))/"
 OUT_DIR=${3}
 SCRIPT_DIR="/bdp_registration_utils/"
+# SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ) # For local testing
 SUBJ=${2}
-IS_ONLINE=true
+IS_ONLINE=false
 
 # Check if the target directory exists
 if [ ! -d ${TARGET_DIR} ]; then
@@ -37,7 +38,8 @@ mkdir -p ${OUT_DIR}/cloud_compare/tubes ${MKDIR_OPTS} \
     ${OUT_DIR}/cloud_compare/meshes_point_clouds
 
 python ${SCRIPT_DIR}/reorganize_files.py ${TARGET_DIR} ${TMP_DIR}/reorganized/ -f
-REFERENCE=${TMP_DIR}/reorganized/reference.nii.gz
+REFERENCE=${TMP_DIR}/reorganized/reference.nii*
+
 shopt -s nullglob
 # Check if there are any files with the  specified extension
 if [ ! -f ${REFERENCE} ]; then
@@ -180,7 +182,7 @@ for BUNDLE in ${OUT_DIR}/native/streamlines/*
 
     if [ ${IS_ONLINE} = false ];
         then bdp_scale_tractography_file.py ${BUNDLE} \
-        ${OUT_DIR}/cloud_compare/polylines/$(basename ${BUNDLE} .${EXT}).vtk
+            ${OUT_DIR}/cloud_compare/polylines/$(basename ${BUNDLE} .${EXT}).vtk
     fi
 
     bdp_generate_tubes_from_streamlines.py ${BUNDLE} 0.00025 \
