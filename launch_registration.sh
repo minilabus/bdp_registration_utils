@@ -6,7 +6,7 @@ TARGET_DIR=${1}
 TMP_DIR="tmp_$((1 + $RANDOM % 100))/"
 OUT_DIR=${3}
 SCRIPT_DIR="/bdp_registration_utils/"
-# SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ) # For local testing
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ) # For local testing
 SUBJ=${2}
 IS_ONLINE=false
 
@@ -52,24 +52,24 @@ fi
 echo "Harmonize headers to all match a reference image..."
 for BUNDLE in ${TMP_DIR}/reorganized/streamlines/*.trk;
     do EXT=$(basename "${BUNDLE}" | awk -F . '{print $NF}')
-    scil_header_validate_compatibility.py ${BUNDLE} ${REFERENCE} > ${TMP_DIR}/log.txt 2>&1
+    scil_header_validate_compatibility. ${BUNDLE} ${REFERENCE} > ${TMP_DIR}/log.txt 2>&1
     if grep -q "All input files have compatible headers" ${TMP_DIR}/log.txt; then
         continue
     fi
     echo "Fixing header for ${BUNDLE}"
-    scil_tractogram_convert.py ${BUNDLE} ${TMP_DIR}/tmp.tck -f
-    scil_tractogram_convert.py ${TMP_DIR}/tmp.tck ${BUNDLE} --reference ${REFERENCE} -f
+    scil_tractogram_convert ${BUNDLE} ${TMP_DIR}/tmp.tck -f
+    scil_tractogram_convert ${TMP_DIR}/tmp.tck ${BUNDLE} --reference ${REFERENCE} -f
 done
 rm ${TMP_DIR}/tmp.tck -rf
 
-scil_header_validate_compatibility.py ${SCRIPT_DIR}/mni_masked.nii.gz ${REFERENCE} \
+scil_header_validate_compatibility ${SCRIPT_DIR}/mni_masked.nii.gz ${REFERENCE} \
     ${TMP_DIR}/streamlines/* ${TMP_DIR}/reorganized/labels_masks/* \
     ${TMP_DIR}/reorganized/images/* > ${TMP_DIR}/log.txt 2>&1
 
 # Sneak in nifti as surfaces (useful only for actual binary data)
 for NIFTI in ${TMP_DIR}/reorganized/images/* ${TMP_DIR}/reorganized/labels_masks/*;
     do FILENAME="${NIFTI%%.*}"
-    scil_volume_math.py lower_threshold ${NIFTI} 0.001 ${TMP_DIR}/tmp.nii.gz \
+    scil_volume_math lower_threshold ${NIFTI} 0.001 ${TMP_DIR}/tmp.nii.gz \
         --data_type uint8 -f;
     bdp_convert_nifti_to_surface.py ${TMP_DIR}/tmp.nii.gz \
         ${TMP_DIR}/reorganized/meshes_point_clouds/$(basename ${FILENAME}).ply
@@ -99,14 +99,14 @@ if ! grep -q "All input files have compatible headers" ${TMP_DIR}/log.txt; then
         WARP_OPTS="--in_deformation ${TMP_DIR}/to_mni1InverseWarp.nii.gz"
     fi
     for BUNDLE in ${TMP_DIR}/reorganized/streamlines/*;
-        do scil_tractogram_apply_transform.py ${BUNDLE} ${SCRIPT_DIR}/mni_masked.nii.gz \
+        do scil_tractogram_apply_transform ${BUNDLE} ${SCRIPT_DIR}/mni_masked.nii.gz \
             ${TMP_DIR}/to_mni0GenericAffine.mat ${TMP_DIR}/streamlines/$(basename ${BUNDLE}) \
-            --inverse ${WARP_OPTS} --cut_invalid -f;
+            --inverse ${WARP_OPTS} --cut_invalid --reference ${SCRIPT_DIR}/mni_masked.nii.gz -f;
     done
 
     echo " - To meshes and points clouds"
     for MESH in ${TMP_DIR}/reorganized/meshes_point_clouds/*;
-        do scil_surface_apply_transform.py ${MESH} \
+        do scil_surface_apply_transform ${MESH} \
             ${TMP_DIR}/to_mni0GenericAffine.mat ${TMP_DIR}/meshes_point_clouds/$(basename ${MESH}) \
             --inverse ${WARP_OPTS};
     done
@@ -141,17 +141,17 @@ echo "Apply transform from our MNI template to the desired specimen..."
 # Using a known transform (MNI->specimen) move all bundles to specimen space (.trk)
 echo " - To streamlines"
 for BUNDLE in ${TMP_DIR}/streamlines/*;
-    do scil_tractogram_apply_transform.py ${BUNDLE} \
+    do scil_tractogram_apply_transform ${BUNDLE} \
         ${SCRIPT_DIR}/${SUBJ}/to_specimenWarped.nii.gz \
         ${SCRIPT_DIR}/${SUBJ}/to_specimen0GenericAffine.mat \
         ${OUT_DIR}/native/streamlines/$(basename ${BUNDLE}) --inverse \
         --in_deformation ${SCRIPT_DIR}/${SUBJ}/to_specimen1InverseWarp.nii.gz \
-        --cut_invalid --reference ${SCRIPT_DIR}/mni_masked.nii.gz &> ${TMP_DIR}/log.txt;
+        --cut_invalid --reference ${SCRIPT_DIR}/${SUBJ}/to_specimenWarped.nii.gz &> ${TMP_DIR}/log.txt;
 done
 
 echo " - To meshes and points clouds"
 for MESH in ${TMP_DIR}/meshes_point_clouds/*;
-    do scil_surface_apply_transform.py ${MESH} \
+    do scil_surface_apply_transform ${MESH} \
         ${SCRIPT_DIR}/${SUBJ}/to_specimen0GenericAffine.mat \
         ${OUT_DIR}/native/meshes_point_clouds/$(basename ${MESH}) --inverse \
         --in_deformation ${SCRIPT_DIR}/${SUBJ}/to_specimen1InverseWarp.nii.gz;
@@ -182,7 +182,7 @@ for BUNDLE in ${OUT_DIR}/native/streamlines/*
 
     if [ ${IS_ONLINE} = false ];
         then bdp_scale_tractography_file.py ${BUNDLE} \
-            ${OUT_DIR}/cloud_compare/polylines/$(basename ${BUNDLE} .${EXT}).vtk
+            ${OUT_DIR}/cloud_compare/polylines/$(basename ${BUNDLE} .${EXT}).vtk --ascii
     fi
 
     bdp_generate_tubes_from_streamlines.py ${BUNDLE} 0.00025 \
