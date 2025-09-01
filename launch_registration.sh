@@ -6,7 +6,7 @@ TARGET_DIR=${1}
 TMP_DIR="tmp_$((1 + $RANDOM % 100))/"
 OUT_DIR=${3}
 SCRIPT_DIR="/bdp_registration_utils/"
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ) # For local testing
+# SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ) # For local testing
 SUBJ=${2}
 IS_ONLINE=false
 
