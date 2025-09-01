@@ -11,7 +11,7 @@ RUN git clone https://github.com/scilus/scilpy.git
 RUN git clone https://github.com/minilabus/bradiphopy.git
 
 WORKDIR /bdp_registration_utils/
-RUN git checkout 7a324a60a868c600acba2b06bd8bfd90f8c0c991
+RUN git checkout f78c7f109827c7555310cf80386ba0f36c640117
 WORKDIR /scilpy/
 RUN git checkout tags/2.1.1
 WORKDIR /bradiphopy
@@ -28,7 +28,7 @@ RUN pip3 install -r requirements.txt
 RUN pip3 install -e .
 
 WORKDIR /bradiphopy
-RUN pip3 install setuptools>=65.7.0
+RUN pip3 install setuptools==76.*
 RUN pip3 install -e .
 
 WORKDIR /
