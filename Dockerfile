@@ -11,7 +11,7 @@ RUN git clone https://github.com/scilus/scilpy.git
 RUN git clone https://github.com/minilabus/bradiphopy.git
 
 WORKDIR /bdp_registration_utils/
-RUN git checkout f78c7f109827c7555310cf80386ba0f36c640117
+RUN git checkout 6ca32f1e4410b4734b84c9975c7c51b34d03e152
 WORKDIR /scilpy/
 RUN git checkout tags/2.1.1
 WORKDIR /bradiphopy
