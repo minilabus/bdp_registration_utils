@@ -28,7 +28,7 @@ RUN pip3 install -r requirements.txt
 RUN pip3 install -e .
 
 WORKDIR /bradiphopy
-RUN pip3 install setuptools==76.*
+RUN pip3 install setuptools==65.*
 RUN pip3 install -e .
 
 WORKDIR /
