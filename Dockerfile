@@ -24,10 +24,11 @@ RUN rsync -av --ignore-existing bdp_registration_utils_tmp/* bdp_registration_ut
 RUN rm -rf bdp_registration_utils.zip bdp_registration_utils_tmp/
 
 WORKDIR /scilpy
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 RUN pip3 install -e .
 
 WORKDIR /bradiphopy
+RUN pip3 install setuptools>=65.7.0
 RUN pip3 install -e .
 
 WORKDIR /
